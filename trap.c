@@ -29,6 +29,7 @@ tvinit(void)
 void
 idtinit(void)
 {
+
   lidt(idt, sizeof(idt));
 }
 
@@ -46,6 +47,7 @@ trap(struct trapframe *tf)
     return;
   }
 
+  int address;
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
@@ -53,6 +55,9 @@ trap(struct trapframe *tf)
       ticks++;
       wakeup(&ticks);
       release(&tickslock);
+      #ifdef LAPA
+      	accessesUpdate();
+      #endif
     }
     lapiceoi();
     break;
@@ -78,6 +83,15 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
 
+   case T_PGFLT: 
+    //ASS3 ========== if page fault occures
+    address = rcr2(); //determine the faulting address
+    if(!isInitOrShell(myproc())){
+	    if (retrievingPages((void*)address) != 0){ 
+	        myproc()->pageFaultsCount++;
+	        break;
+	    }
+	}
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){

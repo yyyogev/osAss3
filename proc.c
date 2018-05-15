@@ -111,7 +111,18 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  int i;
+  memset(p->physicalPages, 0, sizeof(p->physicalPages));
+  for (i = 0; i < MAX_PSYC_PAGES; i++){
+    p->swappedPages[i] = -1;
+  }
+  
+  p->physicalPagesCount=0;
+  p->swappedPagesCount=0;
+  p->pageOutCount=0;
+  p->pageFaultsCount=0;
+  p->pagesHead = 0;
+  p->pagesTail=0;
   return p;
 }
 
@@ -532,3 +543,39 @@ procdump(void)
     cprintf("\n");
   }
 }
+void 
+accessesUpdate() {
+  acquire(&ptable.lock);
+    struct proc *p;
+    pde_t *pde;
+    pte_t *pgtab;
+    pte_t * pte;
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+        if (p->state == RUNNABLE || p->state == RUNNING || p->state == SLEEPING)
+        {
+            struct pageLink *currPage=p->pagesHead;
+           while (currPage)
+            {
+                pde = &p->pgdir[PDX((char*)currPage->va)];
+                if(*pde & PTE_P){                    
+                    pgtab = (pte_t*)((PTE_ADDR(*pde)) + KERNBASE);
+                    pte = &pgtab[PTX((char*)currPage->va)];
+                    if ((*pte) & PTE_A){ 
+                        currPage->accesses++;
+                    }
+                    *pte &= ~PTE_A;  
+                }      
+                currPage = currPage->next;          
+            }
+        }
+    }
+    release(&ptable.lock);
+}
+
+int isInitOrShell(struct proc * process)
+{
+    return (process == 0 || !(namecmp(process->name, "init") && namecmp(process->name, "sh") && namecmp(process->name, "initcode"))); 
+}
+    

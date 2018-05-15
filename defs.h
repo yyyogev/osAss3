@@ -10,6 +10,10 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+void            storingPages(void*);
+int             retrievingPages(void*);
+int 			isInitOrShell (struct proc*);
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);

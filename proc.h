@@ -1,3 +1,6 @@
+#define MAX_PSYC_PAGES 16
+#define MAX_TOTAL_PAGE 32
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -12,7 +15,7 @@ struct cpu {
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
-
+void accessesUpdate(void);
 //PAGEBREAK: 17
 // Saved registers for kernel context switches.
 // Don't need to save all the segment registers (%cs, etc),
@@ -30,6 +33,15 @@ struct context {
   uint ebx;
   uint ebp;
   uint eip;
+};
+
+struct pageLink {
+  int allocated;
+  int va;
+  int accesses;
+  int age;
+  struct pageLink* next;
+  struct pageLink* prev;
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
@@ -52,6 +64,14 @@ struct proc {
 
   //Swap file. must initiate with create swap file
   struct file *swapFile;      //page file
+  int physicalPagesCount;
+  int swappedPagesCount;
+  int pageOutCount;
+  int pageFaultsCount;
+  int swappedPages[MAX_PSYC_PAGES];
+  struct pageLink physicalPages[MAX_PSYC_PAGES];
+  struct pageLink* pagesHead;
+  struct pageLink* pagesTail;
 };
 
 // Process memory is laid out contiguously, low addresses first:
